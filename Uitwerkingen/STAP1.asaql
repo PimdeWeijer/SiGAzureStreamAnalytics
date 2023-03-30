@@ -1,0 +1,6 @@
+SELECT
+    *
+INTO
+    [storage-account-output]
+FROM
+    [event-hub-telemetry] evh

@@ -1,0 +1,26 @@
+SELECT
+    evh.id, evh.temperature, evh.power, met.location, evh.timestamp
+INTO
+    [storage-account-output-amsterdam]
+FROM
+    [event-hub-telemetry] evh
+JOIN
+    [sqlserver-metadata] met
+ON 
+    met.deviceId = evh.id
+WHERE
+    met.location = 'Amsterdam'
+
+
+SELECT
+    evh.id, evh.temperature, evh.power, met.location, evh.timestamp
+INTO
+    [storage-account-output-utrecht]
+FROM
+    [event-hub-telemetry] evh
+JOIN
+    [sqlserver-metadata] met
+ON 
+    met.deviceId = evh.id
+WHERE
+    met.location = 'Utrecht'

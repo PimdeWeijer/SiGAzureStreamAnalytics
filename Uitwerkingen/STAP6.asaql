@@ -1,0 +1,58 @@
+WITH InputValidation AS 
+(
+    SELECT *
+    FROM 
+        [event-hub-telemetry] evh TIMESTAMP BY timestamp
+    WHERE
+        evh.temperature NOT BETWEEN -20 AND 50
+    OR UDF.isNull(evh, 'power') = 1
+), 
+TotalErrors AS (
+    SELECT 
+		inp.id, count(*) as total
+    FROM 
+		InputValidation inp
+    GROUP BY 
+		inp.id, HoppingWindow(second, 12, 4)
+    HAVING 
+		count(*) >= 2
+),
+RelativeErrors AS (
+    SELECT te.id, te.total
+    FROM 
+        TotalErrors te
+    JOIN 
+        TotalErrors tep
+    ON 
+        te.id = tep.id
+    AND 
+        DATEDIFF(millisecond, tep, te) BETWEEN 3000 AND 5000
+    WHERE 
+        te.total = 3 AND tep.total = 2
+)
+
+SELECT
+    err.id, err.total, met.location, system.timestamp() AS timestamp 
+INTO
+    [storage-account-output-amsterdam]
+FROM
+    RelativeErrors err
+JOIN
+    [sqlserver-metadata] met
+ON 
+    met.deviceId = err.id
+WHERE
+    met.location = 'Amsterdam'
+
+SELECT
+    err.id, err.total, met.location, system.timestamp() AS timestamp 
+INTO
+    [storage-account-output-utrecht]
+FROM
+    RelativeErrors err
+JOIN
+    [sqlserver-metadata] met
+ON 
+    met.deviceId = err.id
+WHERE
+    met.location = 'Utrecht'

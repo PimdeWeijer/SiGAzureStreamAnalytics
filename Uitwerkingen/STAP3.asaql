@@ -1,0 +1,36 @@
+WITH InputValidation AS 
+(
+    SELECT *
+    FROM 
+        [event-hub-telemetry] evh
+    WHERE
+        evh.temperature NOT BETWEEN -20 AND 50
+)
+
+SELECT
+    val.id, val.temperature, val.power, met.location, val.timestamp
+INTO
+    [storage-account-output-amsterdam]
+FROM
+    InputValidation val
+JOIN
+    [sqlserver-metadata] met
+ON 
+    met.deviceId = val.id
+WHERE
+    met.location = 'Amsterdam'
+
+SELECT
+    val.id, val.temperature, val.power, met.location, val.timestamp
+INTO
+    [storage-account-output-utrecht]
+FROM
+    InputValidation val
+JOIN
+    [sqlserver-metadata] met
+ON 
+    met.deviceId = val.id
+WHERE
+    met.location = 'Utrecht'
+
+
