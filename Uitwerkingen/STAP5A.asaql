@@ -1,45 +1,45 @@
-WITH InputValidation AS 
+WITH InputValidation AS
 (
     SELECT *
-    FROM 
+    FROM
         [event-hub-telemetry] evh TIMESTAMP BY timestamp
     WHERE
         evh.temperature NOT BETWEEN -20 AND 50
-    OR evh.power IS NULL 
-), 
+    OR evh.power IS NULL
+),
 TotalErrors AS (
-    SELECT 
+    SELECT
 		inp.id, count(*) as total
-    FROM 
+    FROM
 		InputValidation inp
-    GROUP BY 
+    GROUP BY
 		inp.id, HoppingWindow(second, 12, 4)
-    HAVING 
-		count(*) >= 2
+    HAVING
+		count(*) >= 3
 )
 
 SELECT
-    err.id, err.total, met.location, system.timestamp() AS timestamp 
+    err.id, err.total, met.location, system.timestamp() AS timestamp
 INTO
     [storage-account-output-amsterdam]
 FROM
     TotalErrors err
 JOIN
     [sqlserver-metadata] met
-ON 
+ON
     met.deviceId = err.id
 WHERE
     met.location = 'Amsterdam'
 
 SELECT
-    err.id, err.total, met.location, system.timestamp() AS timestamp 
+    err.id, err.total, met.location, system.timestamp() AS timestamp
 INTO
     [storage-account-output-utrecht]
 FROM
     TotalErrors err
 JOIN
     [sqlserver-metadata] met
-ON 
+ON
     met.deviceId = err.id
 WHERE
     met.location = 'Utrecht'

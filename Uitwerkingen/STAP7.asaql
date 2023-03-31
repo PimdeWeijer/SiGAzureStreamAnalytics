@@ -1,63 +1,63 @@
-WITH InputValidation AS 
+WITH InputValidation AS
 (
     SELECT *
-    FROM 
+    FROM
         [event-hub-telemetry] evh TIMESTAMP BY timestamp
     WHERE
         evh.temperature NOT BETWEEN -20 AND 50
     OR UDF.isNull(evh, 'power') = 1
-), 
+),
 TotalErrors AS (
-    SELECT 
+    SELECT
 		inp.id, count(*) as total
-    FROM 
+    FROM
 		InputValidation inp
-    GROUP BY 
+    GROUP BY
 		inp.id, HoppingWindow(second, 12, 4)
-    HAVING 
-		count(*) >= 2
+    HAVING
+		count(*) >= 3
 ),
 RelativeErrors AS (
-    SELECT 
+    SELECT
 		te.id, te.total,
-    CASE WHEN 
-		te.total = 3 AND tep.total = 2 THEN 'RAISE' ELSE 'RESOLVE' END AS anomaly
-    FROM 
+    CASE WHEN
+		te.total >= 3 THEN 'RAISE' ELSE 'RESOLVE' END AS anomaly
+    FROM
         TotalErrors te
-    JOIN 
+    JOIN
         TotalErrors tep
-    ON 
+    ON
         te.id = tep.id
-    AND 
+    AND
         DATEDIFF(millisecond, tep, te) BETWEEN 3000 AND 5000
-    WHERE 
-        te.total = 3 AND tep.total = 2
+    WHERE
+        te.total >= 3 AND tep.total < 3
     OR
-        te.total = 2 AND tep.total = 3
+        te.total < 3 AND tep.total >= 3
 )
 
 SELECT
-    err.id, err.total, met.location, err.anomaly, system.timestamp() AS timestamp 
+    err.id, err.total, met.location, err.anomaly, system.timestamp() AS timestamp
 INTO
     [storage-account-output-amsterdam]
 FROM
     RelativeErrors err
 JOIN
     [sqlserver-metadata] met
-ON 
+ON
     met.deviceId = err.id
 WHERE
     met.location = 'Amsterdam'
 
 SELECT
-    err.id, err.total, met.location, err.anomaly, system.timestamp() AS timestamp 
+    err.id, err.total, met.location, err.anomaly, system.timestamp() AS timestamp
 INTO
     [storage-account-output-utrecht]
 FROM
     RelativeErrors err
 JOIN
     [sqlserver-metadata] met
-ON 
+ON
     met.deviceId = err.id
 WHERE
     met.location = 'Utrecht'
