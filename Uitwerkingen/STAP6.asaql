@@ -14,8 +14,6 @@ TotalErrors AS (
 		InputValidation inp
     GROUP BY
 		inp.id, HoppingWindow(second, 12, 4)
-    HAVING
-		count(*) >= 3
 ),
 RelativeErrors AS (
     SELECT te.id, te.total
